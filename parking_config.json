@@ -1,0 +1,24 @@
+{
+  "garage_capacity": 100,
+  "default_spot_capacity": 4,
+  "spot_bus_limit": 50,
+  "vehicle_types": {
+    "Car": {
+      "size": 4,
+      "price_czk_per_hour": 20
+    },
+    "Motorcycle": {
+      "size": 2,
+      "price_czk_per_hour": 10
+    },
+    "Bicycle": {
+      "size": 1,
+      "price_czk_per_hour": 5
+    },
+    "Bus": {
+      "size": 16,
+      "price_czk_per_hour": 80
+    }
+  },
+  "free_parking_minutes": 10
+}
