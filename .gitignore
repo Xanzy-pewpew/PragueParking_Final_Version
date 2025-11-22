@@ -1,0 +1,15 @@
+# Python Bytecode (alltid ignorera)
+__pycache__/
+*.pyc
+
+# Virtual Environments (om du använder dem)
+venv/
+.venv/
+
+# VS Code User-specific files
+# Vi inkluderar .vscode/ för att ignorera Pylance-konfiguration, cache,
+# och användarspecifika launch settings.
+.vscode/
+
+# Loggfiler eller liknande
+*.log
