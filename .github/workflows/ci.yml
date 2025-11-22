@@ -1,0 +1,32 @@
+name: 1. CI - Build and Test
+
+on:
+  push:
+    # Triggad på alla pushes till main och development, samt alla feature-grenar
+    branches: [ main, development, feature/** ] 
+  pull_request:
+    # Triggad när en PR öppnas mot main eller development
+    branches: [ main, development ]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      # Installerar Flask, Pytest, etc.
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    #- name: Run Pytest (Unit Tests)
+      # Detta är ditt VG-krav
+    #  run: pytest
