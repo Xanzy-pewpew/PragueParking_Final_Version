@@ -1,0 +1,37 @@
+name: CD - Create Release Artifact
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  release:
+    name: Create Deployable Package and Release
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write 
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      
+    - name: Install dependencies (för att säkerställa att kraven finns)
+      run: |
+        python -m pip install --upgrade pip
+        # Vi installerar inte alla beroenden, bara skapar paketet.
+        # Detta steg kan användas för att t.ex. kompilera statiska filer om det fanns en frontend.
+        
+    - name: Create Deployable ZIP Artifact
+      run: |
+        zip -r prague-parking-v2.zip . -x .git\* .github\*
+        
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.sha }}
+        name: Deployment Release ${{ github.run_number }}
+        body: |
+          Automatiskt byggt och testat releasepaket för Prague Parking V2.
+          Denna ZIP-fil kan laddas upp manuellt till en server för driftsättning.
+        files: prague-parking-v2.zip
