@@ -2,11 +2,15 @@ name: 2. CD - Create Release Artifact
 
 on:
   push:
+    # Trigger endast när kod mergas till main-grenen
     branches: [ main ]
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    # FIX FÖR 403-FEL: Ger jobbet skrivbehörighet för att skapa releaser och taggar
+    permissions:
+      contents: write 
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
@@ -27,7 +31,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        # FIX: Använder run_number för att skapa en unik, GILTIG tagg
+        # FIX FÖR 422-FEL: Använder run_number för att skapa en giltig tagg
         tag_name: v1.0.${{ github.run_number }} 
         name: Release v1.0.${{ github.run_number }}
         body: 'Automated release of Prague Parking V2 code.'
