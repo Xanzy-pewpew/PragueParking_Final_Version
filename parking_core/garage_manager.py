@@ -30,7 +30,6 @@ class ParkingGarage:
         capacity = self.config.get("garage_capacity", 100)
         spot_size = self.config.get("default_spot_capacity", 4)
         
-        # Skapa alla P-platser baserat på konfiguration
         self.spots = [ParkingSpot(i + 1, spot_size) for i in range(capacity)] 
 
     def _load_config(self):
@@ -52,4 +51,23 @@ class ParkingGarage:
             if spot.park(vehicle):
                 return spot.id
                 
+        return None
+    
+    def unpark_vehicle(self, reg_nr: str) -> dict | None:
+        """Hittar ett fordon efter reg.nummer och tar bort det."""
+        target_reg = reg_nr.upper()
+
+        for spot in self.spots:
+            for vehicle in spot.vehicles:
+                if vehicle.reg_nr == target_reg:
+                    
+                    spot.vehicles.remove(vehicle)
+                    spot.available_capacity += vehicle.size
+                    
+                    return {
+                        "reg_nr": target_reg,
+                        "spot_id": spot.id,
+                        "price": 50
+                    }
+        
         return None
