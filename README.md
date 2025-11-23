@@ -9,3 +9,5 @@ Projektet är uppbyggt kring en OOP-kärna (Vehicle, ParkingSpot, ParkingGarage)
 | :--- | :--- |
 | **CI - Build and Test** | [![CI Status](https://github.com/Xanzy-pewpew/PragueParking_Final_Version/actions/workflows/ci.yml/badge.svg)](https://github.com/Xanzy-pewpew/PragueParking_Final_Version/actions/workflows/ci.yml) |
 | **CD - Release Artifact** | [![CD Status](https://github.com/Xanzy-pewpew/PragueParking_Final_Version/actions/workflows/cd.yml/badge.svg)](https://github.com/Xanzy-pewpew/PragueParking_Final_Version/actions/workflows/cd.yml) |
+
+---CONSTRUCTION IN PROGRESS---
