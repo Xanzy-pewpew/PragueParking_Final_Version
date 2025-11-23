@@ -3,7 +3,6 @@ from parking_core.garage_manager import ParkingGarage
 
 app = Flask(__name__) 
 
-# Skapar en global instans av garaget
 parking_garage = ParkingGarage()
 
 @app.route('/')

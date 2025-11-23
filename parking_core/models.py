@@ -27,3 +27,33 @@ class Bicycle(Vehicle):
 class Bus(Vehicle):
     def __init__(self, reg_nr: str):
         super().__init__(reg_nr, "Bus", 16)
+
+class ParkingSpot:
+    """Representerar en enskild parkeringsplats med kapacitet."""
+
+    def __init__(self, spot_id: int, max_capacity: int):
+        self.id = spot_id
+        self.max_capacity = max_capacity
+        self.available_capacity = max_capacity
+        self.vehicles = [] # Lista över fordon (Vehicle-objekt) parkerade på platsen
+
+    @property
+    def is_full(self) -> bool:
+        """Kollar om platsen är helt fylld."""
+        return self.available_capacity == 0
+    
+    def can_accommodate(self, vehicle: Vehicle) -> bool:
+        """Kollar om fordonet får plats på denna plats."""
+        return vehicle.size <= self.available_capacity
+    
+    def add_vehicle(self, vehicle: Vehicle):
+        """Lägger till fordon och uppdaterar kapacitet."""
+        if self.can_accommodate(vehicle):
+            self.vehicles.append(vehicle)
+            self.available_capacity -= vehicle.size
+
+    def remove_vehicle(self, vehicle: Vehicle):
+        """Tar bort fordon och återställer kapacitet (används i GarageManager)."""
+        if vehicle in self.vehicles:
+            self.vehicles.remove(vehicle)
+            self.available_capacity += vehicle.size

@@ -1,30 +1,13 @@
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Static, Button
+from textual.widgets import Header, Footer, Button
 from textual.containers import Container
-from parking_core.garage_manager import ParkingGarage
-from parking_core.models import Car 
-from rich.panel import Panel
+from parking_core.models import Car, Motorcycle, Bus 
+from rich.panel import Panel 
 from input_screen import InputScreen
+from map_widget import ParkingMap
+from state_manager import garage 
 
-garage = ParkingGarage()
-
-class StatusDisplay(Static):
-    """Widget för att visa garagestatus."""
-    def on_mount(self) -> None:
-        self.update_status()
-
-    def update_status(self):
-        """Uppdaterar texten med aktuell information."""
-        total_spots = len(garage.spots)
-        occupied_spots = sum(1 for spot in garage.spots if spot.vehicles)
-        
-        status_text = (
-            f"[bold green]PRAGUE PARKING V2[/bold green]\n"
-            f"----------------------------------\n"
-            f"🅿️ Totala Platser: [yellow]{total_spots}[/yellow]\n"
-            f"🚗 Antal upptagna: [red]{occupied_spots}[/red]"
-        )
-        self.update(Panel(status_text, title="[b]Garage Status[/b]", border_style="cyan"))
+# Global instansen är nu flyttad till state_manager.py
 
 class PragueParkingApp(App[None]):
     """Huvudapplikationen för Textual TUI."""
@@ -33,6 +16,7 @@ class PragueParkingApp(App[None]):
         ("q", "quit", "Avsluta (Q)"),
     ]
     
+    # Uppdaterad CSS för att inkludera kart-layouten
     CSS = """
     Container {
         layout: vertical;
@@ -48,9 +32,9 @@ class PragueParkingApp(App[None]):
         """Skapar widgets (komponenterna) i applikationen."""
         yield Header(show_clock=True)
         yield Container(
-            StatusDisplay(),
-            Button("1. Parkera Bil", id="park_btn", variant="primary"),
-            Button("2. Hämta Bil", id="unpark_btn"),
+            ParkingMap(), 
+            Button("1. Parkera Fordon", id="park_btn", variant="primary"),
+            Button("2. Hämta Fordon", id="unpark_btn"),
         )
         yield Footer()
 
@@ -62,47 +46,74 @@ class PragueParkingApp(App[None]):
         """Hanterar knapptryckningar."""
         
         if event.button.id == "park_btn":
+            # UPPDATERAD PROMPT: Ber användaren om REGNR, ID och TYP
             self.push_screen(
-                InputScreen(title="Parkera fordon", button_text="Parkera"),
-                self.handle_parking_result,
+                InputScreen(title="Parkera (Ange: REGNR,ID,TYP [Bil/MC/Buss])", button_text="Parkera"),
+                self.handle_parking_result, 
             )
         
         elif event.button.id == "unpark_btn":
+            # Ber användaren endast om reg.nr
             self.push_screen(
-                InputScreen(title="Hämta fordon", button_text="Hämta"),
-                self.handle_unparking_result,
+                InputScreen(title="Hämta fordon (Ange: REGNR)", button_text="Hämta"),
+                self.handle_unparking_result, 
             )
 
 
-    def handle_parking_result(self, reg_nr: str | None) -> None:
+    def handle_parking_result(self, full_input: str | None) -> None:
         """Hanterar resultatet från input-skärmen för parkering."""
-        status_widget = self.query_one(StatusDisplay)
         
-        if not reg_nr:
-            self.notify("Parkering avbruten.", title="Parkering", severity="warning")
+        parking_map = self.query_one(ParkingMap)
+        
+        # Kontrollerar att vi har minst två kommatecken (3 delar totalt)
+        if not full_input or full_input.count(',') < 2:
+            self.notify("Ogiltigt format. Använd: Regnr,ID,Typ (Bil/MC/Buss)", title="Fel", severity="error")
+            return
+            
+        try:
+            # Delar upp input i tre delar: reg_nr, spot_id, v_type
+            parts = [s.strip() for s in full_input.split(',')]
+            reg_nr, spot_id_str, v_type_str = parts[0], parts[1], parts[2].lower()
+            spot_id = int(spot_id_str)
+        except (ValueError, IndexError):
+            self.notify("Fel vid inläsning. Kontrollera formatet och att ID är ett nummer.", title="Fel", severity="error")
             return
 
-        car = Car(reg_nr)
-        spot_id = garage.park_vehicle(car)
+        # Skapa fordonsobjektet baserat på typ-strängen
+        vehicle = None
+        if v_type_str in ["bil", "car"]:
+            vehicle = Car(reg_nr)
+        elif v_type_str in ["mc", "motorcycle"]:
+            vehicle = Motorcycle(reg_nr)
+        elif v_type_str in ["buss", "bus"]:
+            vehicle = Bus(reg_nr)
         
-        status_widget.update_status()
+        if vehicle is None:
+            self.notify(f"Okänd fordonstyp '{v_type_str}'. Använd Bil, MC eller Buss.", title="Fel", severity="error")
+            return
 
-        if spot_id:
-            self.notify(f"Bilen {reg_nr} parkerad på plats #{spot_id}", title="Parkering Lyckades", timeout=3)
+        # Kallar på den uppdaterade garage-metoden
+        result_spot_id = garage.park_vehicle(vehicle, spot_id=spot_id) 
+        
+        parking_map.update_map() # UPPDATERA KARTAN VISUELLT
+
+        if result_spot_id:
+            self.notify(f"{vehicle.type} {reg_nr} parkerad på plats #{result_spot_id}", title="Parkering Lyckades", timeout=3)
         else:
-            self.notify("Kunde inte parkera! Garaget fullt.", title="Fel", severity="error")
+            self.notify("Kunde inte parkera! Plats upptagen, för liten eller ogiltig.", title="Fel", severity="error")
 
     
     def handle_unparking_result(self, reg_nr: str | None) -> None:
         """Hanterar resultatet från input-skärmen för uthämtning."""
-        status_widget = self.query_one(StatusDisplay)
+        
+        parking_map = self.query_one(ParkingMap)
         
         if not reg_nr:
             self.notify("Uthämtning avbruten.", title="Uthämtning", severity="warning")
             return
 
         result = garage.unpark_vehicle(reg_nr)
-        status_widget.update_status()
+        parking_map.update_map()
 
         if result:
             self.notify(f"Hämtat {result['reg_nr']} från plats #{result['spot_id']}. Pris: {result['price']} SEK (Dummy).", title="Uthämtning Lyckades", timeout=5)

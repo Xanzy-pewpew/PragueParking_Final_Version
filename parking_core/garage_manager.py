@@ -1,73 +1,104 @@
-import json
-from .models import Vehicle
-
-CONFIG_PATH = 'parking_config.json'
-
-class ParkingSpot:
-    """Klass 4: Representerar en enskild parkeringsplats."""
-    def __init__(self, spot_id: int, total_capacity: int):
-        self.id = spot_id
-        self.capacity = total_capacity
-        self.available_capacity = total_capacity
-        self.vehicles = [] # Lista med Vehicle-objekt
-
-    def park(self, vehicle: Vehicle) -> bool:
-        """Försöker parkera ett fordon."""
-        if self.available_capacity >= vehicle.size:
-            self.vehicles.append(vehicle)
-            self.available_capacity -= vehicle.size
-            return True
-        return False
-        
-    def __repr__(self):
-        return f"Spot {self.id} ({self.available_capacity}/{self.capacity} available)"
+from parking_core.models import ParkingSpot, Vehicle
+from datetime import datetime, timedelta
 
 class ParkingGarage:
-    """Klass 5: Huvudklassen som hanterar alla P-platser och logik."""
+    """Huvudklassen för parkeringsgaraget, hanterar platser och fordon."""
     
-    def __init__(self):
-        self.config = self._load_config()
-        capacity = self.config.get("garage_capacity", 100)
-        spot_size = self.config.get("default_spot_capacity", 4)
-        
-        self.spots = [ParkingSpot(i + 1, spot_size) for i in range(capacity)] 
-
-    def _load_config(self):
-        """Läser in konfigurationen från JSON-filen."""
-        try:
-            with open(CONFIG_PATH, 'r') as f:
-                return json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            print(f"Varning: Kunde inte läsa {CONFIG_PATH}. Använder standardvärden.")
-            return {}
-
-    def park_vehicle(self, vehicle: Vehicle) -> int | None:
-        """Huvudlogik för parkering. Letar efter första lediga plats."""
-        
-        for spot in self.spots:
-            if vehicle.type == "Bus" and spot.id > self.config.get("spot_bus_limit", 50):
-                continue
-
-            if spot.park(vehicle):
-                return spot.id
-                
-        return None
+    # Priser (timpris i SEK)
+    HOURLY_RATE = 15
+    MAX_DAILY_COST = 90
     
+    def __init__(self, num_spots: int = 100):
+        # Initialiserar 100 platser, alla med kapacitet 4 (standard för bil)
+        self.spots = [ParkingSpot(i + 1, max_capacity=4) for i in range(num_spots)]
+
+    def park_vehicle(self, vehicle: Vehicle, spot_id: int | None = None) -> int | None:
+        """
+        Parkerar ett fordon. Kan ta emot ett specifikt spot_id.
+        Returnerar spot_id om parkeringen lyckas, annars None.
+        """
+        target_spot = None
+
+        if spot_id is not None:
+            # Försök parkera på specifik plats (val av användare/karta)
+            try:
+                # Observera: Spots är 0-indexerade, men ID är 1-indexerat
+                target_spot = self.spots[spot_id - 1]
+            except IndexError:
+                # Ogiltigt ID
+                return None 
+
+            if target_spot.can_accommodate(vehicle):
+                target_spot.add_vehicle(vehicle)
+                return target_spot.id
+            else:
+                # Platsen är upptagen/för liten
+                return None 
+        
+        else:
+            # Hitta första lediga plats (Ursprunglig funktionalitet om spot_id ej ges)
+            for spot in self.spots:
+                if spot.can_accommodate(vehicle):
+                    target_spot = spot
+                    target_spot.add_vehicle(vehicle)
+                    return target_spot.id
+        
+        return None # Inga lediga platser hittades
+
     def unpark_vehicle(self, reg_nr: str) -> dict | None:
-        """Hittar ett fordon efter reg.nummer och tar bort det."""
-        target_reg = reg_nr.upper()
-
+        """
+        Tar bort fordonet, beräknar kostnaden och returnerar detaljer.
+        Returnerar en dict med resultat, eller None om fordonet inte hittas.
+        """
+        reg_nr = reg_nr.upper()
+        
         for spot in self.spots:
             for vehicle in spot.vehicles:
-                if vehicle.reg_nr == target_reg:
+                if vehicle.reg_nr == reg_nr:
                     
-                    spot.vehicles.remove(vehicle)
-                    spot.available_capacity += vehicle.size
+                    # 1. Beräkna kostnad
+                    cost = self._calculate_cost(vehicle.entry_time)
                     
+                    # 2. Ta bort fordonet från platsen
+                    spot.remove_vehicle(vehicle)
+                    
+                    # 3. Returnera information
                     return {
-                        "reg_nr": target_reg,
+                        "reg_nr": reg_nr,
                         "spot_id": spot.id,
-                        "price": 50
+                        "price": cost,
+                        "entry_time": vehicle.entry_time.strftime("%Y-%m-%d %H:%M:%S")
                     }
         
+        return None # Fordonet hittades inte
+
+    def find_vehicle(self, reg_nr: str) -> dict | None:
+        """Hittar ett fordon och returnerar dess plats-ID och typ."""
+        reg_nr = reg_nr.upper()
+        
+        for spot in self.spots:
+            for vehicle in spot.vehicles:
+                if vehicle.reg_nr == reg_nr:
+                    return {
+                        "reg_nr": reg_nr,
+                        "spot_id": spot.id,
+                        "type": vehicle.type
+                    }
         return None
+
+    def _calculate_cost(self, entry_time: datetime) -> int:
+        """Hjälpmetod för att beräkna parkeringskostnaden."""
+        time_parked = datetime.now() - entry_time
+        
+        # Simulera avrundning uppåt till närmaste timme
+        hours = max(1, (time_parked.total_seconds() / 3600))
+        total_hours = int(hours) if hours == int(hours) else int(hours) + 1
+        
+        total_cost = total_hours * self.HOURLY_RATE
+        
+        # Beräkna maximal dygnskostnad
+        days_parked = time_parked.days
+        max_cost_for_period = days_parked * self.MAX_DAILY_COST + self.MAX_DAILY_COST
+        
+        # Kostnaden är det lägsta av den beräknade timkostnaden och max dygnskostnad
+        return min(total_cost, max_cost_for_period)
