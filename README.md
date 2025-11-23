@@ -9,9 +9,3 @@ Projektet är uppbyggt kring en OOP-kärna (Vehicle, ParkingSpot, ParkingGarage)
 | :--- | :--- |
 | **CI - Build and Test** | [![CI Status](https://github.com/Xanzy-pewpew/PragueParking_Final_Version/actions/workflows/ci.yml/badge.svg)](https://github.com/Xanzy-pewpew/PragueParking_Final_Version/actions/workflows/ci.yml) |
 | **CD - Release Artifact** | [![CD Status](https://github.com/Xanzy-pewpew/PragueParking_Final_Version/actions/workflows/cd.yml/badge.svg)](https://github.com/Xanzy-pewpew/PragueParking_Final_Version/actions/workflows/cd.yml) |
-
-## 🛠️ Lokalt Uppstart
-1. Klona repositoryt.
-2. Installera beroenden: `pip install -r requirements.txt`
-3. Kör CLI-applikationen: `python cli.py`
-4. Kör Pytest: `pytest`
